@@ -1,0 +1,1 @@
+build --symlink_prefix=bin/bazel --copt="-g" --cxxopt="-g" --copt="-O0" --cxxopt="-O0"
