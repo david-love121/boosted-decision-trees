@@ -1,6 +1,9 @@
 #pragma once
 #include <stdexcept>
 #include <vector>
+#include <map>
+#include <unordered_map>
+#include "../data_container/data_container.hpp"
 template <typename T>       
 class Node {
 private:
@@ -11,6 +14,8 @@ private:
     Node* rightChild;
     //The feature which the node is responsible for
     int featureIndex;
+    //I'm assuming features are gonna stay strings which would be convenient
+    std::unordered_map<std::string, T> featuresMap;
     static int& idCounter() {
         static int counter = 0;
         return counter;
@@ -37,12 +42,16 @@ public:
 
     void setFeatureIndex(int newIndex) {featureIndex = newIndex; }
     //returns the node which the container finishes on
-    const Node* runInput(const std::vector<T>& inputs) const {
+    const Node* runInput(const DataContainer container) const {
+        std::vector<T> features = container.getFeatures();
+        std::string label = container.getLabel();
+        featuresMap.emplace(label, 0);
+        featuresMap[label]++;
         const Node* currentNode = this;
         if (leftChild == nullptr || rightChild == nullptr) {
             return currentNode;
         }
-        T input = inputs.at(featureIndex);
+        
         if (input >= classifierValue) {
             currentNode = rightChild->runInput(inputs);
         } else {
@@ -51,7 +60,7 @@ public:
         return currentNode;
     }
 
-    
-
+    const std::unordered_map& getFeatureMap() const {return featuresMap; }
+    const resetFeatureMap() { featuresMap.clear(); }
 
 };

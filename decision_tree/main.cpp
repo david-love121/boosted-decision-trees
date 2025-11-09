@@ -8,6 +8,8 @@
 #include <vector>
 #include <new>
 #include <stdexcept>
+#include <map>
+#include <unordered_map>
 #include "../data_container/data_container.hpp"
 
 std::vector<DataContainer> readCsvToContainers(const std::string& filePath = "./data/iris.data", int featureLength = 4) {
@@ -44,29 +46,18 @@ std::vector<DataContainer> readCsvToContainers(const std::string& filePath = "./
     return containers;
 }
 // Can be overloaded for other types, this works specifically for features = double. Returns the id of the last node
-int runTrainingExample(const DataContainer& container, const Node<double>* head) {
-    const std::vector<double> features = container.getFeatures();
-    const Node<double>* finishingContainer = head->runInput(features);
-    return finishingContainer->getId(); 
+void runTrainingExample(const DataContainer& container, const Node<double>* head) {
+    const Node<double>* finishingContainer = head->runInput(container);
+    return;
 };
-//Returns a list of IDs where the ID at index 0 is the ID where datacontainer at index 0 landed. For calculating gini impurity.
-std::vector<int> runAllExamples(const std::vector<DataContainer>& containers, const Node<double>* head) {
-    std::vector<int> listOfIds;
+//Runs all examples, results are stored in the unordered map of each node
+void runAllExamples(const std::vector<DataContainer>& containers, const Node<double>* head) {
+    
     for (int i = 0; i < containers.size(); i++) {
-        int returnedId = runTrainingExample(containers.at(i), head);
-        listOfIds.push_back(returnedId);
+        runTrainingExample(containers.at(i), head);
     }
-    return listOfIds;
-};
-
-double calculateGiniImpurity(const std::vector<DataContainer>& containers, const std::vector<int> listOfIds, const int numberOfClassifications) {
-    if (containers.size() != listOfIds.size()) {
-        throw std::runtime_error("sizes do not match");
-    }
-    for (int i = 0; i < containers.size(); i++) {
-        
-    }
-};
+    
+}
 
 int main() {
     //So I can easily change the type of the tree without updating every reference to it
@@ -74,13 +65,11 @@ int main() {
     dType defaultValue = 0.0;
     Node<dType>* headNode = new Node<dType>(defaultValue);
     DecisionTree<dType> tree(headNode); 
-    Node<dType>* leftNode = new Node<dType>(defaultValue);
-    Node<dType>* rightNode = new Node<dType>(defaultValue);
-    headNode->setLeftChild(leftNode);
-    headNode->setRightChild(rightNode); 
+    
     const std::vector<DataContainer> csvData = readCsvToContainers();
-    std::vector<int> listOfFinishingIds = runAllExamples(csvData, headNode);
-
+    const int nClassifications = 3;
+    runAllExamples(csvData, headNode);
+    
     std::cout << Node<dType>::peekNextId();
     return 0;
 }
