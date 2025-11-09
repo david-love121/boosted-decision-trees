@@ -1,7 +1,8 @@
 #pragma once
 #include <vector>
 #include <string>
-#include "../decision_tree/node.hpp"
+
+template <typename T> class Node;
 class DataContainer {
 private:
     int id_;

@@ -46,12 +46,12 @@ std::vector<DataContainer> readCsvToContainers(const std::string& filePath = "./
     return containers;
 }
 // Can be overloaded for other types, this works specifically for features = double. Returns the id of the last node
-void runTrainingExample(const DataContainer& container, const Node<double>* head) {
+void runTrainingExample(const DataContainer& container, Node<double>* head) {
     const Node<double>* finishingContainer = head->runInput(container);
     return;
 };
 //Runs all examples, results are stored in the unordered map of each node
-void runAllExamples(const std::vector<DataContainer>& containers, const Node<double>* head) {
+void runAllExamples(const std::vector<DataContainer>& containers, Node<double>* head) {
     
     for (int i = 0; i < containers.size(); i++) {
         runTrainingExample(containers.at(i), head);
@@ -70,6 +70,7 @@ int main() {
     const int nClassifications = 3;
     runAllExamples(csvData, headNode);
     
-    std::cout << Node<dType>::peekNextId();
+    auto featMap = tree.getHead()->getFeatureMap();
+    
     return 0;
 }

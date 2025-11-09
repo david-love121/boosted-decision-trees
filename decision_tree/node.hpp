@@ -42,25 +42,25 @@ public:
 
     void setFeatureIndex(int newIndex) {featureIndex = newIndex; }
     //returns the node which the container finishes on
-    const Node* runInput(const DataContainer container) const {
+    const Node* runInput(const DataContainer& container) {
         std::vector<T> features = container.getFeatures();
         std::string label = container.getLabel();
-        featuresMap.emplace(label, 0);
-        featuresMap[label]++;
+        this->featuresMap.emplace(label, 0);
+        featuresMap[label] += 1;
         const Node* currentNode = this;
         if (leftChild == nullptr || rightChild == nullptr) {
             return currentNode;
         }
-        
+        T input = features.at(featureIndex);
         if (input >= classifierValue) {
-            currentNode = rightChild->runInput(inputs);
+            currentNode = rightChild->runInput(container);
         } else {
-            currentNode = leftChild->runInput(inputs);
+            currentNode = leftChild->runInput(container);
         }
         return currentNode;
     }
 
-    const std::unordered_map& getFeatureMap() const {return featuresMap; }
-    const resetFeatureMap() { featuresMap.clear(); }
+    const std::unordered_map<std::string, T>& getFeatureMap() const {return featuresMap; }
+    const void resetFeatureMap() { featuresMap.clear(); }
 
 };

@@ -14,6 +14,7 @@
                 "breakpoint set --name main"
             ],
             "sourceMap": {
+                "/proc/self/cwd": "${workspaceFolder}",
                 "/home/david/.cache/bazel/_bazel_david/fd35965ca7be8c84a12401a7bf750713/execroot/_main": "${workspaceFolder}"
             }
         }
