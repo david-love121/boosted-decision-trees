@@ -79,9 +79,9 @@ int main() {
     const std::vector<DataContainer> csvData = readCsvToContainers();
     const int nClassifications = 3;
     auto map = runAllExamplesMemoized(csvData, headNode);
-    for (auto [key, value] : map) {
-        
-    }
+    int numberOfNodes = tree.getTotalNodes();
+    //Todo: change datacontainers to be heap allocated and have nodes store pointers of the containers they have seen, we need a way to lookup from node to container
+    
     tree.calculateAllImpurity();
     auto featMap = tree.getHead()->getFeatureMap();
     double headImpurity = headNode->getImpurity();
