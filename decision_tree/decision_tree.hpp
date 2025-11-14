@@ -11,7 +11,7 @@ public:
 
     Node<T>* getHead() const { return head_; }
     void setHead(Node<T>* root) { head_ = root; nodeMap_[root->getId()] = root; }
-    void runTree(T input) { head_->runInput(input); }
+    void runTree(T* input) { head_->runInput(input); }
     void addNodes(Node<T>* newNodeL, Node<T>* newNodeR, int prevId) {nodeMap_[prevId]->setChildren(newNodeL, newNodeR); }
     void calculateAllImpurity() {
         head_->calculateImpurityForward();

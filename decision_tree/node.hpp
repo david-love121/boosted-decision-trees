@@ -20,6 +20,7 @@ private:
     //This bool will identify if a node needs to recalculate it's impurity. If it is frozen, the impurity is accurate
     bool frozen;
     int nSamples;
+    std::vector<const DataContainer*> current_containers;
     static int& idCounter() {
         static int counter = 0;
         return counter;
@@ -56,15 +57,16 @@ public:
     //Increments and returns new value
     int incrementSamples() { nSamples++; return nSamples; }
     //returns the node which the container finishes on
-    Node* runInput(const DataContainer& container) {
+    Node* runInput(const DataContainer* container) {
         frozen = false;
         incrementSamples();
-        std::vector<T> features = container.getFeatures();
-        std::string label = container.getLabel();
+        std::vector<T> features = container->getFeatures();
+        std::string label = container->getLabel();
         this->featuresMap.emplace(label, 0);
         featuresMap[label] += 1;
         Node* currentNode = this;
         if (leftChild == nullptr || rightChild == nullptr) {
+            current_containers.push_back(container);
             return currentNode;
         }
         T input = features.at(featureIndex);

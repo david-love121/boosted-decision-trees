@@ -12,13 +12,13 @@
 #include <unordered_map>
 #include "../data_container/data_container.hpp"
 
-std::vector<DataContainer> readCsvToContainers(const std::string& filePath = "./data/iris.data", int featureLength = 4) {
+std::vector<DataContainer*> readCsvToContainers(const std::string& filePath = "./data/iris.data", int featureLength = 4) {
     std::ifstream file(filePath);
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open CSV file at " + filePath);
     }
 
-    std::vector<DataContainer> containers;
+    std::vector<DataContainer*> containers;
     std::string line;
 
     while (std::getline(file, line)) {
@@ -35,7 +35,7 @@ std::vector<DataContainer> readCsvToContainers(const std::string& filePath = "./
             i++;
             features.push_back(std::stod(cell));
         }
-        DataContainer container(features, cell);
+        DataContainer* container = new DataContainer(features, cell);
         containers.push_back(container);
 
         if (features.empty()) {
@@ -46,26 +46,18 @@ std::vector<DataContainer> readCsvToContainers(const std::string& filePath = "./
     return containers;
 }
 // Can be overloaded for other types, this works specifically for features = double. Returns ptr to last node
-Node<double>* runTrainingExample(const DataContainer& container, Node<double>* head) {
+Node<double>* runTrainingExample(const DataContainer* container, Node<double>* head) {
     Node<double>* finishingContainer = head->runInput(container);
     return finishingContainer;
 };
 //Runs all examples, results are stored in the unordered map of each node
-void runAllExamples(const std::vector<DataContainer>& containers, Node<double>* head) {
+void runAllExamples(const std::vector<DataContainer*> containers, Node<double>* head) {
     
     for (int i = 0; i < containers.size(); i++) {
         runTrainingExample(containers.at(i), head);
     }
 }
-//Returns a map of where each container will land
-std::unordered_map<DataContainer, Node<double>*> runAllExamplesMemoized(const std::vector<DataContainer>& containers, Node<double>* head) {
-    std::unordered_map<DataContainer, Node<double>*> memoizedMap;
-    for (int i = 0; i < containers.size(); i++) {
-        Node<double>* finishContainer = runTrainingExample(containers.at(i), head); 
-        memoizedMap[containers.at(i)] = finishContainer;
-    }
-    return memoizedMap;
-}
+
 
 
 
@@ -76,9 +68,9 @@ int main() {
     Node<dType>* headNode = new Node<dType>(defaultValue);
     DecisionTree<dType> tree(headNode); 
     
-    const std::vector<DataContainer> csvData = readCsvToContainers();
+    const std::vector<DataContainer*> csvData = readCsvToContainers();
     const int nClassifications = 3;
-    auto map = runAllExamplesMemoized(csvData, headNode);
+
     int numberOfNodes = tree.getTotalNodes();
     //Todo: change datacontainers to be heap allocated and have nodes store pointers of the containers they have seen, we need a way to lookup from node to container
     

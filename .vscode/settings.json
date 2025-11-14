@@ -1,4 +1,5 @@
 {
+    "clangd.compilationDatabasePath": "${workspaceFolder}",
     "files.associations": {
         ".fantomasignore": "ignore",
         "array": "cpp",
