@@ -60,7 +60,7 @@ public:
     void incrementRunningValue(T delta) {runningValue_ = runningValue_ + delta; }
     //Increments and returns new value
     int incrementSamples() { nSamples_++; return nSamples_; }
-    T getAverageValue() { runningValue_ / nSamples_; }
+    T getAverageValue() { return runningValue_ / nSamples_; }
     //returns the node which the container finishes on
     const int runInput(const DataContainer& container) {
         frozen_ = false;

@@ -18,6 +18,7 @@ public:
     void addNodes(std::unique_ptr<Node<T>> newNodeL, std::unique_ptr<Node<T>> newNodeR, int prevId) {nodeMap_[prevId]->setChildren(newNodeL, newNodeR); }
     void calculateAllImpurity() {
         nodeMap_[0]->calculateImpurityForward();
+        this->scoresFrozen_ = true;
     }
     
     int getTotalNodes() { return nodeMap_.size(); }
@@ -35,27 +36,39 @@ public:
     }
     //Runs the tree
     void runTree() {
-        
         for (int i = 0; i < dataset_.totalContainers(); i++) {
             int returnId = nodeMap_[0]->runInput(dataset_.getContainer(i));
             this->leafIds_.push_back(returnId);
         }
-
     }
+
     //Checks all the leaf nodes and splits them if necessary 
     void makeSplits() {
         for (int id : this->leafIds_) {
-            double current_impurity = nodeMap_[id].getImpurity();
+            double current_impurity = nodeMap_[id]->getImpurity();
             //Make new children
             if (current_impurity != 0) {
                 addNodes(std::make_unique<Node<T>>(T{}), std::make_unique<Node<T>>(T{}), id);
             }
             //Change split
-            nodeMap_[id].setClassifierValue(nodeMap_[id].getAverageValue());
+            nodeMap_[id]->setClassifierValue(nodeMap_[id]->getAverageValue());
             //Todo: check if other features make better splits
         }
-
+        this->resetTree();
         
+    }
+    double sumTotalImpurity() {
+        double runningSum = 0.0;
+        for (std::unique_ptr<Node<T>> node : nodeMap_) {
+            runningSum += node->getImpurity();
+        }
+        return runningSum;
+    }
+    //Runs an iteration of the training loop, calculates aggregate impurity before and ater 
+    double runTrainingLoop() {
+        double impurityBefore = sumTotalImpurity();
+        makeSplits();
+        return sumTotalImpurity() - impurityBefore;
     }
 private:
     std::map<int, std::unique_ptr<Node<T>>> nodeMap_;
@@ -66,3 +79,4 @@ private:
     
 
 };
+template class DecisionTree<double>;

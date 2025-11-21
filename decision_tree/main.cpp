@@ -29,6 +29,6 @@ int main() {
 
     int total = tree.getTotalNodes();
     tree.runTree();
-    
+    tree.makeSplits();
     return 0;
 }
