@@ -4,79 +4,56 @@
 #include <memory>
 #include "../dataset/dataset.hpp"
 #include "./node.hpp"
-template <typename T>
+
 class DecisionTree {
 
+private:
+    std::unique_ptr<Node> head_;
+    Dataset dataset_;
+    static int totalNodes_;
+    static int getNextId() {
+        totalNodes_ += 1;
+        return totalNodes_;
+    }
+  
 public:
-    //The constructors do not initialize a full tree - this is the responsibility of main.cpp
-    explicit DecisionTree() : scoresFrozen_(false) {makeHeadNode(); } 
 
-
-    const Node<T>& getHead() const { return nodeMap_[0].get(); }
-
-    void runTree(T* input) { nodeMap_[0]->runInput(input); }
-    void addNodes(std::unique_ptr<Node<T>> newNodeL, std::unique_ptr<Node<T>> newNodeR, int prevId) {nodeMap_[prevId]->setChildren(newNodeL, newNodeR); }
-    void calculateAllImpurity() {
-        nodeMap_[0]->calculateImpurityForward();
-        this->scoresFrozen_ = true;
-    }
-    
-    int getTotalNodes() { return nodeMap_.size(); }
-    void resetLeafIds() { leafIds_.clear(); }
-    void resetTree() {
-        leafIds_.clear();
-        nodeMap_[0]->resetNodeRecursive();
-        scoresFrozen_ = false;
-    }
-    void makeHeadNode() {
-        nodeMap_[0] = std::make_unique<Node<T>>();
-    }
-    const std::map<int, std::unique_ptr<Node<T>>> getNodeMap() const {
-        return nodeMap_;
-    }
-    //Runs the tree
-    void runTree() {
-        for (int i = 0; i < dataset_.totalContainers(); i++) {
-            int returnId = nodeMap_[0]->runInput(dataset_.getContainer(i));
-            this->leafIds_.push_back(returnId);
-        }
+    explicit DecisionTree() { makeHeadNode(); }   
+    static int getTotalNodes() {
+        return totalNodes_;
     }
 
-    //Checks all the leaf nodes and splits them if necessary 
-    void makeSplits() {
-        for (int id : this->leafIds_) {
-            double current_impurity = nodeMap_[id]->getImpurity();
-            //Make new children
-            if (current_impurity != 0) {
-                addNodes(std::make_unique<Node<T>>(T{}), std::make_unique<Node<T>>(T{}), id);
-            }
-            //Change split
-            nodeMap_[id]->setClassifierValue(nodeMap_[id]->getAverageValue());
-            //Todo: check if other features make better splits
-        }
-        this->resetTree();
+    void runTree(DataContainer& input) { head_->runInput(input); }
+    double calculateAllImpurity() {
+        return head_->calculateImpurityForward();
         
     }
-    double sumTotalImpurity() {
-        double runningSum = 0.0;
-        for (std::unique_ptr<Node<T>> node : nodeMap_) {
-            runningSum += node->getImpurity();
+    
+    void resetTree() {
+        head_->resetNodeRecursive();
+
+    }
+    void makeHeadNode() {
+        head_ = std::make_unique<Node>(Node());
+    }
+
+    //Runs the tree oiver the dataset
+    void runTree() {
+        for (int i = 0; i < dataset_.totalContainers(); i++) {
+            int returnId = head_->runInput(dataset_.getContainer(i));
         }
-        return runningSum;
     }
+
+    //Recursive split
+    void makeSplits() {
+        this->head_->optimizeNode(dataset_);
+        //Todo: Finish
+        
+        
+    }
+
     //Runs an iteration of the training loop, calculates aggregate impurity before and ater 
-    double runTrainingLoop() {
-        double impurityBefore = sumTotalImpurity();
-        makeSplits();
-        return sumTotalImpurity() - impurityBefore;
-    }
-private:
-    std::map<int, std::unique_ptr<Node<T>>> nodeMap_;
-    std::vector<int> leafIds_;
-    Dataset dataset_;
-    bool scoresFrozen_;
-    
-    
+
+
 
 };
-template class DecisionTree<double>;

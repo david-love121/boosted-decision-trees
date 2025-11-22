@@ -24,5 +24,7 @@ public:
     Dataset(std::string filename, int nFeatures) {
         readCsvToContainers(filename, nFeatures);
     };
-    const DataContainer& getContainer(int index) { return *allContainers_.at(index); }
+    const DataContainer& getContainer(int index) const { return *allContainers_.at(index); }
+
+    
 };

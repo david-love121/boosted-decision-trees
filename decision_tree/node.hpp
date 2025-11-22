@@ -1,21 +1,23 @@
 #pragma once
+#include <algorithm>
+#include <exception>
 #include <stdexcept>
 #include <vector>
 #include <map>
 #include <memory>
 #include <unordered_map>
 #include "../data_container/data_container.hpp"
-template <typename T>       
+#include "dataset/dataset.hpp"
+//originally was using templates but realized doubles throughout is smarter  
 class Node {
 private:
     int id_;
     // The value which accepts, or sends to the right node when input >= value
-    T classifierValue_;
+    double classifierValue_;
     std::unique_ptr<Node> leftChild_;
     std::unique_ptr<Node> rightChild_;
     //The feature which the node is responsible for
     int featureIndex_;
-    
     double impurity_;
     //This bool will identify if a node needs to recalculate it's impurity. If it is frozen, the impurity is accurate
     bool frozen_;
@@ -23,27 +25,27 @@ private:
     //Holds indices of dataContainers it's seen
     std::vector<std::size_t> sampleIndices_;
     std::unordered_map<std::string, int> classCounts_;
-    //Holds a cumulation of the features it has seen for average when training
-    T runningValue_;
+
     static int& idCounter() {
         static int counter = 0;
         return counter;
     }
     static int nextId() { return idCounter()++; }
+    void resetSamples() { nSamples_ = 0; }
+    void resetSampleIndices() { sampleIndices_.clear(); }
+    void resetClassCounts() { classCounts_.clear(); }
 public:
-    static void resetIdCounter(int start = 0) { idCounter() = start; }
     static int peekNextId() { return idCounter(); }
 
-    explicit Node(T value = T{})
-        : id_(nextId()), classifierValue_(value), leftChild_(nullptr), rightChild_(nullptr), featureIndex_(0), impurity_(0.0), frozen_(true), nSamples_(0), runningValue_(T{}) {
+    explicit Node(double value = 0.0)
+        : id_(nextId()), classifierValue_(value), leftChild_(nullptr), rightChild_(nullptr), featureIndex_(0), impurity_(0.0), frozen_(true), nSamples_(0) {
 
         }
 
     const int getId() const { return id_; }
     const bool getIsLeaf() const { return leftChild_ == nullptr && rightChild_ == nullptr; } 
-    const T getClassifierValue() const { return classifierValue_; }
-    const std::unique_ptr<Node> getLeftChild() const { return leftChild_; }
-    const std::unique_ptr<Node> getRightChild() const { return rightChild_; }
+    const double getClassifierValue() const { return classifierValue_; }
+
     const int getFeatureIndex() const { return featureIndex_; }
     const double getImpurity() {
         return frozen_ ? impurity_ : calculateImpurityScore();
@@ -51,33 +53,29 @@ public:
     const int getNumberSamples() const {
         return nSamples_;
     }
-    void setChildren(std::unique_ptr<Node> left, std::unique_ptr<Node> right) {leftChild_ = std::move(left); rightChild_ = std::move(right); }
-    void setClassifierValue(T value) { classifierValue_ = value; }
+
+    void setClassifierValue(double value) { classifierValue_ = value; }
     void setFeatureIndex(int newIndex) {featureIndex_ = newIndex; }
-    void resetSamples() { nSamples_ = 0; }
-    void resetCurrentContainers() { sampleIndices_.clear(); }
-    void resetRunningValue() { runningValue_ = T{}; }
-    void incrementRunningValue(T delta) {runningValue_ = runningValue_ + delta; }
+
     //Increments and returns new value
     int incrementSamples() { nSamples_++; return nSamples_; }
-    T getAverageValue() { return runningValue_ / nSamples_; }
+
     //returns the node which the container finishes on
     const int runInput(const DataContainer& container) {
         frozen_ = false;
-        incrementSamples();
-        std::vector<T> features = container.getFeatures();
+
+        std::vector<double> features = container.getFeatures();
         std::string label = container.getLabel();
         int currentNodeId = this->id_;
-
-        if (this->getIsLeaf()) {
-            sampleIndices_.push_back(container.getId());
-            classCounts_.emplace(container.getLabel(), 0);
-            classCounts_[container.getLabel()]++;
-            incrementRunningValue(features.at(featureIndex_));
+        incrementSamples();
+        sampleIndices_.push_back(container.getId());
+        classCounts_.emplace(container.getLabel(), 0);
+        classCounts_[container.getLabel()]++;
+        if (this->getIsLeaf()) {    
             return currentNodeId;
         }
 
-        T input = features.at(featureIndex_);
+        double input = features.at(featureIndex_);
 
         if (input >= classifierValue_) {
             currentNodeId = rightChild_->runInput(container);
@@ -86,6 +84,132 @@ public:
         }
         return currentNodeId;
     }
+    //Calculates impurity score of all nodes, returns leaf impurities
+    double calculateImpurityForward() {
+        frozen_ = false;        
+        double thisImpurity = getImpurity();
+        if (this->getIsLeaf()) {
+            return thisImpurity;
+        }
+        double leftImpurity = this->leftChild_->calculateImpurityForward();
+        double rightImpurity = this->rightChild_->calculateImpurityForward();
+        return (leftImpurity + rightImpurity) / 2;
+    }
+    void resetNode() {
+        this->resetSampleIndices();
+        this->resetSamples();
+        this->resetClassCounts();
+        this->frozen_ = false;
+    }
+    void resetNodeRecursive() {
+        this->resetNode();
+        if (getIsLeaf()) {
+            return;
+        }
+        this->leftChild_->resetNodeRecursive();
+        this->rightChild_->resetNodeRecursive();
+    }
+    //Split this node 
+    void createSplit() {
+        if (!this->getIsLeaf()) {
+            throw std::runtime_error("Node should be a leaf"); //Something is wrong! Node should be a leaf when this is called
+        }
+        this->leftChild_ = std::make_unique<Node>(Node());
+        this->rightChild_ = std::make_unique<Node>(Node());
+    }
+    //Try selecting a different classifier value / feature
+    //epsilon is the arbitrary precision of the search
+    void optimizeNode(const Dataset& dataset) {
+        if (sampleIndices_.size() == 0) {
+            std::cout << "Warning: tried to split a node with no samples, skipping";
+            return;
+        }
+        if (!this->getIsLeaf()) {
+            this->leftChild_->optimizeNode(dataset);
+            this->rightChild_->optimizeNode(dataset);
+            return;
+        }
+        int nFeatures = dataset.getContainer(0).getFeatures().size();
+        double bestImpurity = this->getImpurity();
+        int bestFeatureIndex = this->getFeatureIndex();
+        double bestSplitValue = this->getClassifierValue();
+        bool foundBetterSplit = false;
+        for (int i = 0; i < nFeatures; i++) {
+            //Pairwise compare midpoints for better splits
+            std::vector<std::pair<double, std::string>> featureLabels;
+            featureLabels.reserve(sampleIndices_.size());
+            for (auto idx : sampleIndices_) {
+                const DataContainer& thisContainer = dataset.getContainer(idx);
+                featureLabels.push_back({thisContainer.getFeatures()[i], thisContainer.getLabel()});
+            }
+            //sort
+            std::sort(featureLabels.begin(), featureLabels.end(), [](const auto& a, const auto& b) {return a.first < b.first;});
+
+            // 3. Linear scan to find best split
+            // Start with all samples on the right
+            std::unordered_map<std::string, int> leftCounts;
+            std::unordered_map<std::string, int> rightCounts = this->classCounts_;
+            
+            int leftTotal = 0;
+            int rightTotal = this->nSamples_;
+
+            for (size_t k = 0; k < featureLabels.size() - 1; k++) {
+                const auto& val = featureLabels[k];
+                const auto& nextVal = featureLabels[k+1];
+                const std::string& label = val.second;
+
+                // Move sample from Right to Left
+                rightCounts[label]--;
+                leftCounts[label]++;
+                leftTotal++;
+                rightTotal--;
+
+                // If adjacent values are identical, we cannot split between them
+                if (val.first == nextVal.first) continue;
+
+                // Calculate Gini for Left
+                double giniLeft = 1.0;
+                for (const auto& [lbl, count] : leftCounts) {
+                    if (count > 0) {
+                        double prob = (double)count / leftTotal;
+                        giniLeft -= prob * prob;
+                    }
+                }
+
+                // Calculate Gini for Right
+                double giniRight = 1.0;
+                for (const auto& [lbl, count] : rightCounts) {
+                    if (count > 0) {
+                        double prob = (double)count / rightTotal;
+                        giniRight -= prob * prob;
+                    }
+                }
+
+                // Weighted Gini Impurity of the split
+                double weightedImpurity = ((double)leftTotal / nSamples_) * giniLeft + 
+                                          ((double)rightTotal / nSamples_) * giniRight;
+
+                if (weightedImpurity < bestImpurity) {
+                    bestImpurity = weightedImpurity;
+                    bestFeatureIndex = i;
+                    bestSplitValue = (val.first + nextVal.first) / 2.0;
+                    foundBetterSplit = true;
+                }
+            }
+        }
+
+        if (foundBetterSplit) {
+            this->setFeatureIndex(bestFeatureIndex);
+            this->setClassifierValue(bestSplitValue);
+            //recalculate parent impurity
+            this->calculateImpurityScore();
+            this->createSplit();
+        }
+    return;
+    }
+
+    
+private:
     double calculateImpurityScore() {
         frozen_ = true;
         int totalElements = getNumberSamples();
@@ -99,32 +223,6 @@ public:
         return currentImpurity;
         
     }
-    //Calculates impurity score of this node and all children
-    double calculateImpurityForward() {
-        frozen_ = true;
-        double thisImpurity = calculateImpurityScore();
-        if (leftChild_ != nullptr) {
-            leftChild_->calculateImpurityForward();
-        }
-        if (rightChild_ != nullptr) {
-            rightChild_->calculateImpurityForward();
-        }
-        return thisImpurity;
-    }
-    void resetNode() {
-        this->resetCurrentContainers();
-        this->resetRunningValue();
-        this->resetSamples();
-        this->frozen_ = false;
-    }
-    void resetNodeRecursive() {
-        this->resetNode();
-        this->leftChild_->resetNodeRecursive();
-        this->rightChild_->resetNodeRecursive();
-    }
-
-    
-
 
 
 

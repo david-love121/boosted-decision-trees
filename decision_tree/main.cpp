@@ -13,22 +13,29 @@
 #include <unordered_map>
 #include "decision_tree.hpp"
 
-// Can be overloaded for other types, this works specifically for features = double. Returns ptr to last node
 
-//Runs all examples, results are stored in the unordered map of each node
+void trainingLoop(DecisionTree& tree, int epochs = 10) {
+    double lastImpurity = 1.0;
+    for (int i = 0; i < epochs; i++) {
+        tree.runTree();
+        std::cout << "Last impurity: " << lastImpurity << "\n";
+        lastImpurity = tree.calculateAllImpurity();
+        
+        tree.makeSplits();
+        tree.resetTree();
+    }
 
+}
 
 
 int main() {
-    //So I can easily change the type of the tree without updating every reference to it
-    using dType = double;
 
-    DecisionTree<dType> tree; 
+
+    DecisionTree tree; 
     
 
 
-    int total = tree.getTotalNodes();
-    tree.runTree();
-    tree.makeSplits();
+
+    trainingLoop(tree);
     return 0;
 }
